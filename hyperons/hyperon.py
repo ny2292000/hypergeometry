@@ -1,29 +1,18 @@
-#!/usr/bin/env python
-"""
-An animated image
-"""
-import numpy as np
+
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+import numpy as np
+class hyperon(object):
+    def __init__(self,n, charge, radius=2*np.pi):
+        self.n=n
+        self.charge=charge
+        self.radius=radius
+        self.angles = [ i*2*np.pi/n for i in np.arange(n)]
+        self.positions= [[radius*np.cos(x), radius*np.sin(x)] for x in self.angles]
 
-fig = plt.figure()
-
-
-def f(x, y):
-    return np.sin(x) + np.cos(y)
-
-x = np.linspace(0, 2 * np.pi, 120)
-y = np.linspace(0, 2 * np.pi, 100).reshape(-1, 1)
-
-im = plt.imshow(f(x, y), cmap=plt.get_cmap('viridis'), animated=True)
-
-
-def updatefig(*args):
-    global x, y
-    x += np.pi / 15.
-    y += np.pi / 20.
-    im.set_array(f(x, y))
-    return im,
-
-ani = animation.FuncAnimation(fig, updatefig, interval=50, blit=True)
-plt.show()
+    def plotMe(self):
+        fig = plt.figure(figsize=plt.figaspect(1))
+        # Square figure
+        ax = fig.add_subplot(111, projection='3d')
+        getattr(ax, 'set_{}lim'.format('x'))((-np.pi / 4, np.pi / 4))
+        getattr(ax, 'set_{}lim'.format('y'))((-np.pi / 4, np.pi / 4))
+        getattr(ax, 'set_{}lim'.format('z'))((-np.pi / 4, 2.25 * np.pi))
