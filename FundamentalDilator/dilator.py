@@ -50,37 +50,52 @@ def swap_rows(arr, frm, to):
     arr[[frm, to], :] = arr[[to, frm], :]
     return arr
 
-def getSpin(axis=None):
+def spinMe(axis=None):
     spin = np.identity(4)
     if axis is None:
         return spin
     spin=swap_cols(spin, axis,3)
     return spin
 
+def rotateMe(axis=None):
+    spin = np.identity(4)
+    if axis is None:
+        return spin
+    rot=set(0,1,3)-[axis]
+    spin=swap_cols(spin, rot[1],rot[2])
+    return spin
+
 def getDilatorSequence(particle=0, axis=0, spin='half'):
     hp = 1e-9
     he = hp * 1837
     ident = np.identity(4)
-    rotate = getSpin(axis=axis)
+    rotate = spinMe(axis=axis)
     rotationMatrix = [ident,rotate,ident,rotate]
     # Particle Definition
     protonCoeff = np.array([2/3, 2/3, -1/3,hp]).T
-    electronCoeff = np.array([0,-2/3,-1/3,he]).T
-    positronCoeff = np.array([0,2/3,1/3,-he]).T
+    electronCoeff = np.array([-2/3,-1/3,0,he]).T
+    positronCoeff = np.array([2/3,1/3,0, -he]).T
     antiprotonCoeff = np.array([-2/3, -2/3, 1/3,-hp]).T
+    halfelectronAntiNeutrinoCoeff=np.array([0,1/3,-1/3,he]).T
     if(spin=='half'):
-        listA = [protonCoeff, electronCoeff,antiprotonCoeff, positronCoeff,protonCoeff, electronCoeff,antiprotonCoeff, positronCoeff]
+        listA = [protonCoeff, electronCoeff, antiprotonCoeff, positronCoeff, protonCoeff, electronCoeff,
+                 antiprotonCoeff, positronCoeff]
     else:
-        listA=[protonCoeff,positronCoeff ,antiprotonCoeff, electronCoeff,protonCoeff,positronCoeff ,antiprotonCoeff,electronCoeff ]
-    listA = listA[particle:(particle+4)]
+        listA = [protonCoeff, positronCoeff,antiprotonCoeff, electronCoeff,protonCoeff, positronCoeff,antiprotonCoeff, electronCoeff]
+
+    listA = listA[particle:(particle+5)]
     dilatorSequence = [np.dot(rotationMatrix[i],listA[i]) for i in np.arange(4)]
-    A = [x[0:3] for x in dilatorSequence]
+    A = [x[0:4] for x in dilatorSequence]
     return A
 
 
 # The actual amplitude of the metric distorsion is not know. Considering that it is very, very small
 # the metric displacement will be approximated by the sum of the 3D coefficients times the radial thickness
 # hp is unknown
+class neutrino(object):
+    def __init__(self,angle):
+        self.angle=angle
+
 class dilator(object):
         def __init__(self,particle,axis,spin,ax,position=[0,0]):
             self.unit = {}
@@ -90,13 +105,16 @@ class dilator(object):
             self.axis=axis
             self.center = [position + [i*np.pi/2 ]for i in np.arange(5)]
             self.spin=spin
+            self.angle = 0.0
+            self.next=self.dilatorSeq[0]
         def plotMe(self):
             i=0
             max_radius = 2.5 * np.pi
-            for t in self.dilatorSeq:
+            for t in self. dilatorSeq[0:5]:
                 self.unit[i]=unit(t,self.ax,self.center[i]).plotMe(ax)
                 i=i+1
             plt.show()
+
 
 # Radii corresponding to the coefficients:
 class unit(object):
@@ -129,6 +147,23 @@ class unit(object):
             color='r'
         self.ax.plot_surface(x, y, z,  rstride=4, cstride=4, color=color)
 
+
+class hyperon(object):
+    def __init__(self,dilator=None):
+        self.dilators = []
+        if(dilator is not None):
+            self.dilators.append(dilator)
+
+    def __add__(self, addedDilator=None):
+        if (type(addedDilator) is neutrino ):
+            self.dilators[:][0].angle = addedDilator.angle
+            self.next = -1*self.dilators[:][0].dilatorSeq[3]*rotateMe(axis=self.axis)
+        else:
+            if (addedDilator.dilators[:][0].dilatorSeq[0] == self.next):
+                self.dilators.append(addedDilator.dilators)
+        return self
+
+
 if(__name__=='__main__'):
     # for spin in ['half', 'minus-half']:
     #     print('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx Spin=  ',spin)
@@ -144,12 +179,20 @@ if(__name__=='__main__'):
 
     fig = plt.figure(figsize=plt.figaspect(1))
     # Square figure
+    p=np.pi
     ax = fig.add_subplot(111, projection='3d')
-    getattr(ax, 'set_{}lim'.format('x'))((-np.pi / 4, np.pi / 4))
-    getattr(ax, 'set_{}lim'.format('y'))((-np.pi / 4, np.pi / 4))
-    getattr(ax, 'set_{}lim'.format('z'))((-np.pi / 4, 2.25 * np.pi))
-    proton = dilator(particle=0,axis=0,ax=ax,spin='half',position=[0,0])
-    proton.plotMe()
-    a=1
-
-
+    getattr(ax, 'set_{}lim'.format('x'))((-1.5*p, 1.5*p))
+    getattr(ax, 'set_{}lim'.format('y'))((-1.5*p, 1.5*p))
+    getattr(ax, 'set_{}lim'.format('z'))((-1.5*p, 2.25 * np.pi))
+    # Create Neutrinos
+    electronNeutrino = neutrino(angle=0.02)
+    muonNeutrino = neutrino(angle=0.03)
+    # Create Proton
+    proton = hyperon(dilator(particle=0,axis=0,ax=ax,spin='half',position=[-p,0]))
+    # Create Electron
+    electron = hyperon(dilator(particle=3, axis=0, ax=ax, spin='half', position=[0, p]))
+    # Create Neutron
+    neutron=electron + electronNeutrino+proton +electronNeutrino
+    #Create Pion
+    positron= hyperon(dilator(particle=1, axis=0, ax=ax, spin='half', position=[0, p]))
+    pionPlus= positron + muonNeutrino + electron + muonNeutrino
